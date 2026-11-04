@@ -6,7 +6,11 @@ namespace App\Controller;
 
 use App\Contract\TicketCatalogInterface;
 use App\Contract\TicketSlaCalculatorInterface;
+use App\Form\Model\TicketCreateData;
+use App\Form\TicketType;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Psr\Log\LoggerInterface;
@@ -21,7 +25,8 @@ final class TicketController extends AbstractController
     public function __construct(
         private readonly TicketCatalogInterface $ticketCatalog,
         private readonly TicketSlaCalculatorInterface $slaCalculator,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly EntityManagerInterface $entityManager
     )
     {}
 
@@ -37,6 +42,80 @@ final class TicketController extends AbstractController
             'title' => 'Incidencias'
         ]);
     }
+
+    /**
+     * GET: el usuario navega a la ruta, debo mostrarle la página del formulario
+     * POST: el usuario envía el formulario, si está incorrecto le muestro nuevamente
+     * el formulario con los mensajes de errores correspondientes, si está correcto
+     * se hace una redirección a la página del ticket recién creado (ruta show)
+     */
+    #[Route('/tickets/new', name: 'app_ticket_new', methods: ['GET', 'POST'])]
+    public function new(Request $request): Response
+    {
+        // Crear un objeto TicketCreateData (DTO) para recibir la información del formulario
+        $data = new TicketCreateData();
+
+        /**
+         * Crear un objeto form con el método createForm() heredado de AbstractController
+         * 1er parámetro corresponde a la clase que define el formulario
+         * 2do parámetro corresponde al DTO que recibe la información del formulario
+         */
+        $form = $this->createForm(TicketType::class, $data);
+
+        /**
+         * El método handleRequest() hace lo siguiente:
+         * 1- Detecta si el formulario ya ha sido enviado
+         * 2- Extrae los datos correspondientes del Request
+         * 3- Transforma los valores al tipo esperado
+         * 4- Aisgna los datos al DTO (TicketCreateData)
+         */
+        $form->handleRequest($request);
+
+        /**
+         * Chequear si el estado del formulario es enviado y además si el formulario
+         * es válido, en ese caso el formulario crea con éxito la incidencia en la
+         * base de datos, y hago una redirección a la página del ticket recién creado.
+         * isSubmitted() devuelve true si el estado del formulario es enviado
+         * isValid() devuelve true si el formulario es válido, esto es, el formulario
+         * pasa las validaciones establecidas en el DTO
+         */
+        if ($form->isSubmitted() && $form->isValid()) {
+            // Creo la instancia Ticket a partir del DTO $data (TicketCreateData)
+            $ticket = $data->mapToTicket();
+
+            /**
+             * Uso un EntityManager para persistir el ticket en la base de datos.
+             * El EntityManager puede persistir entidades que ya han sido mapeadas.
+             * persist() agrega a la unidad de trabajo la instrucción pero no la ejecuta
+             * flush() ejecuta (consume) todas las instrucciones de la unidad de trabajo
+             */
+            $this->entityManager->persist($ticket);
+            $this->entityManager->flush();
+
+            // Luego de persistir el ticket en la BD, redirigimos a la página de detalle (show)
+            return $this->redirectToRoute(
+                'app_ticket_show', ['code' => $ticket->getCode()]
+            );
+        }
+        /**
+         * Aquí tenemos dos casos:
+         * 1- El formulario no fue enviado -> muestro el formulario al cliente
+         * 2- El formulario fue enviado pero no es válido -> muestro el formulario al cliente
+         * pero con los errores de validación
+         * En ambos casos devuelvo la plantilla, el objeto $form tiene la información
+         * de los errores si los hay, y la plantilla los mostrará o no según sea el caso
+         */
+        return $this->render('ticket/new.html.twig', [
+            'form' => $form,
+        ]);
+    }
+
+
+
+
+
+
+
 
     /* Ruta dinámica que muestra la información de un ticket en particular 
     {code} representa una parte variable de la URL
