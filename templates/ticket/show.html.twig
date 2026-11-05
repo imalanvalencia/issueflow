@@ -5,6 +5,22 @@
 {% block title %}{{ ticket.code }} . Issueflow{% endblock %}
 
 {% block body %}
+    {#
+        Verifico con app.request.hasPreviousSession si existe una sesión activa,
+        ya que si no la hay tampoco habrá mensajes que buscar, además, si no hiciera
+        esta comprobación, el solo hecho de intentar leer con app.flashes() crearía una
+        nueva sesión.
+        app.flashes('success') es un arreglo que contiene todos los mensajes
+        flash de tipo 'success', cuando los leo también los consumo, es decir,
+        dejan de existir a continuación
+    #}
+    {% if app.request.hasPreviousSession %}
+        {% for message in app.flashes('success') %}
+            <div class="flash-success">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
     <p>
         <a href="{{ path('app_ticket_index') }}">Volver a incidencias</a>
     </p>
