@@ -85,8 +85,40 @@ final class TicketCommands
             $this->entityManager->persist($ana);
         }
 
+        $ana->setRoles(['ROLE_AGENT']);
+
         if ($ana->getPassword() === null) {
             $ana->setPassword($this->passwordHasher->hashPassword($ana, 'IssueFlow123!'));
+        }
+
+        /** @var User|null $luis */
+        $luis = $userRepository->findOneBy(['email' => 'luis@issueflow.local']);
+        if ($luis === null) {
+            $luis = new User('Luis Consulta', 'luis@issueflow.local');
+            $this->entityManager->persist($luis);
+        }
+
+        $luis->setRoles(['ROLE_USER']);
+
+        if ($luis->getPassword() === null) {
+            $luis->setPassword(
+                $this->passwordHasher->hashPassword($luis, 'IssueFlow123!'),
+            );
+        }
+
+        /** @var User|null $maria */
+        $maria = $userRepository->findOneBy(['email' => 'maria@issueflow.local']);
+        if ($maria === null) {
+            $maria = new User('María Programa', 'maria@issueflow.local');
+            $this->entityManager->persist($maria);
+        }
+
+        $maria->setRoles(['ROLE_DEV']);
+
+        if ($maria->getPassword() === null) {
+            $maria->setPassword(
+                $this->passwordHasher->hashPassword($maria, 'IssueFlow123!'),
+            );
         }
 
         // Un flush intermedio hace que las Entities nuevas queden gestionadas y

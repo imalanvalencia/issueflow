@@ -11,7 +11,12 @@
             <p class="eyebrow">IssueFlow</p>
             <h1>{{ title }}</h1>
         </div>
-        <a href="{{ path('app_ticket_new') }}">Nueva incidencia</a>
+        {#
+            is_granted() devuelve true si hay un usuario autenticado con el rol solicitado
+        #}
+        {% if is_granted('ROLE_AGENT') %}
+            <a href="{{ path('app_ticket_new') }}">Nueva incidencia</a>
+        {% endif %}  
     </div>
 
     {#

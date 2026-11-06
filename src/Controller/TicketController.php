@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 final class TicketController extends AbstractController
 {
@@ -63,6 +64,11 @@ final class TicketController extends AbstractController
      * se hace una redirección a la página del ticket recién creado (ruta show)
      */
     #[Route('/tickets/new', name: 'app_ticket_new', methods: ['GET', 'POST'])]
+    // IsGranted solo permite acceso a la ruta a los usuarios que tengan el rol indicado
+    #[IsGranted(
+        'ROLE_AGENT',
+        message: 'Necesitas permisos de agente para crear incidencias.'
+    )]
     public function new(Request $request): Response
     {
         // Crear un objeto TicketCreateData (DTO) para recibir la información del formulario

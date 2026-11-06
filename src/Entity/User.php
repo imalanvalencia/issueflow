@@ -36,6 +36,12 @@ final class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $password = null;
 
+    /**
+     * Los roles se almacenan como JSON en la base de datos.
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $roles = [];
+
     public function __construct(
         #[ORM\Column(length: 120)]
         private string $name,
@@ -92,8 +98,23 @@ final class User implements UserInterface, PasswordAuthenticatedUserInterface
     // Método getRoles() que devuelve el listado de roles de un usuario
     public function getRoles(): array
     {
-        // Por los momentos todos los usuarios solo tienen el rol base
-        return ['ROLE_USER'];
+        // El listado de roles es igual al atributo roles si no es null, en caso contrario
+        // lo inicializamos con un arreglo vacío
+        $roles = $this->roles ?? [];
+
+        // Por defecto, por regla de negocio,
+        // siempre agregamos el rol base ROLE_USER a todos los usuarios
+        $roles[] = 'ROLE_USER';
+
+        // Retornamos un arreglos solo con valores no nulos y únicos
+        return array_values(array_unique($roles));
+    }
+
+    // Metodo setRoles() para modificar los roles de un usuario
+    public function setRoles(array $roles): void
+    {
+        // Asignamos como roles el arreglo pero solo con valores no nulos y únicos
+        $this->roles = array_values(array_unique($roles));
     }
 
     // Método getPassword() que devuelve la contraseña del usuario
