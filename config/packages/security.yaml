@@ -6,6 +6,11 @@ security:
     # https://symfony.com/doc/current/security.html#loading-the-user-the-user-provider
     providers:
         users_in_memory: { memory: null }
+        # Proveedor de usuarios de la app, indica la clase y el atributo que va a servir como username
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: email
 
     firewalls:
         dev:
@@ -14,7 +19,25 @@ security:
             security: false
         main:
             lazy: true
-            provider: users_in_memory
+            # El proveedor de usuarios de nuestra app
+            provider: app_user_provider
+
+            # Ruta de login / ingreso de la app. form_login indica que se usará un formulario basado en HTML
+            form_login:
+                # Ruta para inicio de sesión, muestra el formulario
+                login_path: app_login
+                # Ruta a la que se envían los datos del formulario mediante el método POST
+                check_path: app_login
+                # Activamos por seguridad el token csrf (cross-site request forgery)
+                enable_csrf: true
+                # Ruta a la cual redirigir a un usuario tras un inicio de sesión exitoso
+                default_target_path: app_ticket_index
+            
+            # Ruta de cierre de sesión o logout. Vamos a usar el sistema de cierre de sesión automático
+            logout:
+                path: /logout
+                # Ruta a la cual redirigir a un usuario tras un cierre de sesión
+                target: app_home
 
             # Activate different ways to authenticate:
             # https://symfony.com/doc/current/security.html#the-firewall

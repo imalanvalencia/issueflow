@@ -44,6 +44,23 @@
                     <a href="{{ path('app_home') }}">Inicio</a>
                     <a href="{{ path('app_ticket_index') }}">Incidencias</a>
                     <a href="{{ path('app_health') }}">Estado</a>
+                    {#
+                        app.user es null si no hay un usuario autenticado, en caso
+                        contrario contiene la entidad User
+                    #}
+                    {% if app.user %}
+                        {# Si hay un usuario conectado, lo saludo, y muestro la opción de cerrar sesión  #}
+                        <span>Hola, {{ app.user.name }}</span>
+                        {#
+                            Uso la ruta predeterminada de Symfony para cierre de sesión.
+                            Desactivo data-turbo-prefetch para evitar que se ejecute en segundo plano
+                            la opción de logout cuando el cursor del ratón se posa sobre el enlace de logout 
+                        #}
+                        <a href="{{ path('_logout_main') }}" data-turbo-prefetch="false">Cerrar sesión</a>
+                    {% else %}
+                        {# Si no hay un usuario conectado, muestro la opción de acceder #}
+                        <a href="{{ path('app_login') }}">Acceder</a>
+                    {% endif %}
                 </nav>
             </div>
         </header>

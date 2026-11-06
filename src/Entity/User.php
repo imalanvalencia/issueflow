@@ -7,13 +7,17 @@ namespace App\Entity;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use InvalidArgumentException;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
- * Usuario mínimo de IssueFlow para asignar tickets
+ * Usuario mínimo de IssueFlow para asignar tickets.
+ * Para utilizar User como nuestra entidad de autenticación, esta
+ * debe implementar UserInterface y PasswordAuthenticatedUserInterface
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'users')]
-final class User
+final class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     /**
      * Identificador técnico (id) de base de datos.
@@ -25,6 +29,12 @@ final class User
     #[ORM\GeneratedValue] // Indica que es un valor autogenerado
     #[ORM\Column(type: Types::BIGINT, options: ['unsigned' => true])] // Si no especifico nombre de la columna, esta toma el nombre del atributo
     private ?int $id = null;
+
+    /**
+     * Guardamos siempre el HASH de la contraseña, nunca la contraseña plana
+     */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $password = null;
 
     public function __construct(
         #[ORM\Column(length: 120)]
@@ -67,5 +77,34 @@ final class User
     public function getEmail(): string
     {
         return $this->email;
+    }
+
+    /**
+     * Implementamos los métodos de las interfaces UserInterface y PasswordAuthenticatedUserInterface
+     */
+
+    // Método getUserIdentifier() que devuelve el identificador público (username / nombre de usuario) para ingreso
+    public function getUserIdentifier(): string
+    {
+        return $this->email;    
+    }
+
+    // Método getRoles() que devuelve el listado de roles de un usuario
+    public function getRoles(): array
+    {
+        // Por los momentos todos los usuarios solo tienen el rol base
+        return ['ROLE_USER'];
+    }
+
+    // Método getPassword() que devuelve la contraseña del usuario
+    public function getPassword(): ?string
+    {
+        return $this->password;
+    }
+
+    // Método setPassword() que recibe un hash y lo asigna al password
+    public function setPassword(string $hash): void
+    {
+        $this->password = $hash;
     }
 }
