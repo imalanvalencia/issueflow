@@ -11,7 +11,25 @@
             <p class="eyebrow">IssueFlow</p>
             <h1>{{ title }}</h1>
         </div>
+        {#
+            is_granted() devuelve true si hay un usuario autenticado con el rol solicitado
+        #}
+        {% if is_granted('ROLE_AGENT') %}
+            <a href="{{ path('app_ticket_new') }}">Nueva incidencia</a>
+        {% endif %}  
     </div>
+
+    {#
+        Mostramos un enlance a el último ticket visitado,
+        este código del ticket se recuperó de la sesión.
+    #}
+    {% if lastTicketCode %}
+        <p class="session-note">
+            Última incidencia consultada:
+            <a href="{{ path('app_ticket_show', { code: lastTicketCode }) }}">{{ lastTicketCode }}</a>
+        </p>
+    {% endif %}
+    
     <div class="ticket-list">
         {# Recorremos el array de tickets que el controlador suministró #}
         {% for ticket in tickets %}

@@ -21,6 +21,8 @@ use Symfony\Component\HttpFoundation\Response;
 */
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 
+use Symfony\Component\Security\Http\Attribute\IsGranted;
+
 /* Creamos la clase correspondiente a nuestro controlador
 Tiene el mismo nombre que el archivo en src/Controller
 Usamos el modificador final para que nadie herede de ella */
@@ -64,6 +66,10 @@ final class HomeController extends AbstractController
     con la indicación que es texto plano lo que va en el cuerpo: text/plain.
     */
     #[Route('/health', name: 'app_health', methods: ['GET'])]
+    #[IsGranted(
+        'ROLE_DEV',
+        message: 'Necesitas permisos de desarrollador para ver el diagnóstico de la app.'
+    )]
     public function health(): Response
     {
         return new Response(

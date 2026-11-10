@@ -9,6 +9,30 @@
         <h2>{{ ticket.title }}</h2>
         <p>Prioridad: <strong>{{ ticket.priority.label }}</strong></p>
         <p>Estado: <strong>{{ ticket.status.label }}</strong></p>
+        <p>
+            Categoría:
+            {# 
+                Antes de intentar acceder al name de category, tengo que verificar
+                que category no sea nulo (si no hago esta verificación puede ocurrir un error)
+            #}
+            {% if ticket.category %}
+                {{ ticket.category.name }}
+            {% else %}
+                Sin categoría
+            {% endif %}
+        </p>
+        <p>
+            Asignado a:
+            {# 
+                Antes de intentar acceder al name de assignee, tengo que verificar
+                que assignee no sea nulo (si no hago esta verificación puede ocurrir un error)
+            #}
+            {% if ticket.assignee %}
+                {{ ticket.assignee.name }}
+            {% else %}
+                Sin asignar
+            {% endif %}
+        </p>
         {# 
             Agregamos el mensaje "Requiere atención inmediata" solo
             si el ticket tiene una prioridad urgente: TicketPriority::Urgent

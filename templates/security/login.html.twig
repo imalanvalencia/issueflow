@@ -1,0 +1,56 @@
+{% extends "base.html.twig" %}
+
+{% block title %}Acceso · IssueFlow{% endblock %}
+
+{% block body %}
+    <section class="panel auth-panel">
+        <h1>Acceder a IssueFlow</h1>
+        <p>Identíficate con tu correo y contraseña</p>
+
+        {#
+            AuthenticationUtils entrega una AuthenticationException cuando el intento
+            de ingreso falla. messageKey es la representación segura para mostrar.
+            No debemos imprimir error.message directamente.
+        #}
+        {% if error %}
+            <div class="flash flash-error" role="alert">
+                {{ error.messageKey|trans(error.messageData, 'security') }}
+            </div>
+        {% endif %}
+        <form method="post" action="{{ path('app_login') }}">
+            <div class="form-row">
+                <label for="username">Email</label>
+                <input
+                    type="email"
+                    id="username"
+                    name="_username"
+                    value="{{ last_username }}"
+                    autocomplete="email"
+                    required
+                    autofocus
+                >
+            </div>
+            <div class="form-row">
+                <label for="password">Contraseña</label>
+                <input
+                    type="password"
+                    id="password"
+                    name="_password"
+                    autocomplete="current-password"
+                    required
+                >
+            </div>
+
+            {#
+                form_login no usa Symfony Form, añadimos manualmente el token
+                CSRF (cross-site request forgery) que validará el firewall
+            #}
+            <input
+                type="hidden"
+                name="_csrf_token"
+                value="{{ csrf_token('autenticate') }}"
+            >
+            <button type="submit">Entrar</button>
+        </form>
+    </section>
+{% endblock %}

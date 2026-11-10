@@ -1,0 +1,32 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nueva incidencia · IssueFlow{% endblock %}
+
+{% block body %}
+    <p><a href="{{ path('app_ticket_index') }}">Volver a incidencias</a></p>
+    <div class="page-header">
+        <div>
+            <p class="eyebrow">Gestión de incidencias</p>
+            <h1>Nueva incidencia</h1>
+        </div>
+    </div>
+    <p>Completa los datos para registrar una incidencia en IssueFlow</p>
+    <div class="form-card">
+        {{ form_start(form) }}
+            {# Mostramos en la parte superior los errores globales #}
+            {{ form_errors(form) }}
+
+            {# Mostramos los distintos campos del formulario #}
+            {{ form_row(form.code) }}
+            {{ form_row(form.title) }}
+            {{ form_row(form.priority) }}
+            {{ form_row(form.status) }}
+            {{ form_row(form.category) }}
+            {{ form_row(form.assignee) }}
+            {{ form_row(form.save) }}
+
+            {# Renderiza campos ocultos que falten, incluido el token CSRF #}
+            {{ form_rest(form) }}
+        {{ form_end(form) }}
+    </div>
+{% endblock %}
