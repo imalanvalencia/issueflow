@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Api\Model\TicketCreatePayload;
+use App\Api\Model\TicketUpdatePayload;
 use App\Form\Model\TicketSearchCriteria;
 use App\Model\TicketPriority;
 use App\Model\TicketStatus;
@@ -222,6 +223,95 @@ final class ApiTicketController extends AbstractController
         return $this->json([
             'ticket' => $this->ticketToArray($ticket),
         ]);
+    }
+
+    #[Route('/api/tickets/{code}', name: 'app_api_ticket_update', methods: ['PATCH'])]
+    public function update(
+        string $code,
+        #[MapRequestPayload(
+            acceptFormat: 'json',
+            validationFailedStatusCode: Response::HTTP_UNPROCESSABLE_ENTITY,
+        )]
+        TicketUpdatePayload $payload,
+    ): JsonResponse {
+        if (preg_match('/^INC-\\d{4}$/', $code) !== 1) {
+            return $this->json(
+                [
+                    'error' => [
+                        'code' => 'invalid_ticket_code',
+                        'message' => 'El código debe tener el formato INC-0000',
+                    ],
+                ],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $ticket = $this->ticketCatalog->findByCode($code);
+
+        if ($ticket === null) {
+            return $this->json(
+                [
+                    'error' => [
+                        'code' => 'ticket_not_found',
+                        'message' => 'La incidencia solicitada no existe',
+                    ],
+                ],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        if ($payload->title !== null) {
+            $ticket->setTitle($payload->title);
+        }
+
+        if (($priority = $payload->priorityEnum()) !== null) {
+            $ticket->setPriority($priority);
+        }
+
+        if (($status = $payload->statusEnum()) !== null) {
+            $ticket->setStatus($status);
+        }
+
+        $this->entityManager->flush();
+
+        return $this->json([
+            'ticket' => $this->ticketToArray($ticket),
+        ]);
+    }
+
+    #[Route('/api/tickets/{code}', name: 'app_api_ticket_delete', methods: ['DELETE'])]
+    public function delete(string $code): Response
+    {
+        if (preg_match('/^INC-\d{4}$/', $code) !== 1) {
+            return $this->json(
+                [
+                    'error' => [
+                        'code' => 'invalid_ticket_code',
+                        'message' => 'El código debe tener el formato INC-0000',
+                    ],
+                ],
+                Response::HTTP_BAD_REQUEST,
+            );
+        }
+
+        $ticket = $this->ticketCatalog->findByCode($code);
+
+        if ($ticket === null) {
+            return $this->json(
+                [
+                    'error' => [
+                        'code' => 'ticket_not_found',
+                        'message' => 'La incidencia solicitada no existe',
+                    ],
+                ],
+                Response::HTTP_NOT_FOUND,
+            );
+        }
+
+        $this->entityManager->remove($ticket);
+        $this->entityManager->flush();
+
+        return new Response(status: Response::HTTP_NO_CONTENT);
     }
 
     private function ticketToArray(Ticket $ticket): array
