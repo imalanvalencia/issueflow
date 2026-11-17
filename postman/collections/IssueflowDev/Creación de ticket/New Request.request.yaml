@@ -1,0 +1,13 @@
+$kind: http-request
+url: http://localhost:8000/api/tickets
+method: POST
+body:
+  type: json
+  content: |-
+    {
+        "code": "INC-1022",
+        "title": "No puedo descargar una factura",
+        "priority": "high",
+        "status": "open"
+    }
+order: 1000

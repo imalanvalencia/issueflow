@@ -7,13 +7,17 @@ namespace App\Controller;
 use App\Contract\TicketCatalogInterface;
 use App\Contract\TicketSlaCalculatorInterface;
 use App\Form\Model\TicketCreateData;
+use App\Form\Model\TicketSearchCriteria;
+use App\Form\TicketFilterType;
 use App\Form\TicketType;
+use App\Service\TicketPaginator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpFoundation\Exception\BadRequestException;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 final class TicketController extends AbstractController
@@ -27,7 +31,8 @@ final class TicketController extends AbstractController
         private readonly TicketCatalogInterface $ticketCatalog,
         private readonly TicketSlaCalculatorInterface $slaCalculator,
         private readonly LoggerInterface $logger,
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly TicketPaginator $ticketPaginator,
     )
     {}
 
@@ -50,10 +55,28 @@ final class TicketController extends AbstractController
             $lastTicketCode = $request->getSession()->get('last_ticket_code');
         }
 
+        // Este objeto representa los criterios que llegan desde el formulario GET
+        $criteria = new TicketSearchCriteria();
+
+        // Creamos el objeto formulario
+        $filterForm = $this->createForm(TicketFilterType::class, $criteria,[
+            'action' => $this->generateUrl('app_ticket_index'),
+        ]);
+
+        // Proceso el formulario
+        $filterForm->handleRequest($request);
+
+        /**
+         * Usar el servicio TicketPaginator para obtener la página
+         * adecuada
+         */
+        $ticketPage = $this->ticketPaginator->getTicketPage($criteria, $request->query->get('page'));
+
         return $this->render('ticket/index.html.twig', [
-            'tickets' => $this->ticketCatalog->getTickets(),
             'title' => 'Incidencias',
-            'lastTicketCode' => $lastTicketCode
+            'lastTicketCode' => $lastTicketCode,
+            'filterForm' => $filterForm,
+            'ticketPage' => $ticketPage,
         ]);
     }
 

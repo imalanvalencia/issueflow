@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Contract;
 
 use App\Entity\Ticket;
+use App\Form\Model\TicketSearchCriteria;
+use Doctrine\ORM\Tools\Pagination\WindowPage;
 
 /*
     Contrato que define que necesita mi aplicación de cualquier catálogo
@@ -16,6 +18,9 @@ interface TicketCatalogInterface
 {
     /* Método que devuelva un array con todas las incidencias */
     public function getTickets(): array;
+
+    /* Método que devuelve un listado de incidencias dado unos criterios de búsqueda */
+    public function search(TicketSearchCriteria $criteria, int $page, int $pageSize): WindowPage;
 
     /* Método que busca una incidencia en el listado según un
     code proporcionado, y que devuelva null si no existe */
