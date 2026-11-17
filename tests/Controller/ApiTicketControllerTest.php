@@ -56,6 +56,29 @@ final class ApiTicketControllerTest extends WebTestCase
         ], json_decode((string) $this->client->getResponse()->getContent(), true));
     }
 
+    public function test_it_creates_a_ticket_with_the_existing_json_contract(): void
+    {
+        $this->client->request(
+            Request::METHOD_POST,
+            '/api/tickets',
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            '{"code":"INC-2001","title":"Nueva incidencia","priority":"high","status":"open"}',
+        );
+
+        self::assertResponseStatusCodeSame(201);
+        self::assertSame('/api/tickets/INC-2001', $this->client->getResponse()->headers->get('Location'));
+        self::assertSame([
+            'ticket' => [
+                'code' => 'INC-2001',
+                'title' => 'Nueva incidencia',
+                'priority' => 'high',
+                'status' => 'open',
+            ],
+        ], json_decode((string) $this->client->getResponse()->getContent(), true));
+    }
+
     public function test_show_returns_the_expected_errors_for_invalid_and_missing_tickets(): void
     {
         $this->client->request(Request::METHOD_GET, '/api/tickets/wrong');

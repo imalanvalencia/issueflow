@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Api\Model\TicketCreatePayload;
 use App\Api\Model\TicketListQuery;
+use App\Api\Mapper\TicketResponseMapper;
 use App\Api\Model\TicketUpdatePayload;
 use App\Form\Model\TicketSearchCriteria;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -23,6 +24,7 @@ final class ApiTicketController extends AbstractController
     public function __construct(
         private readonly TicketPaginator $ticketPaginator,
         private readonly EntityManagerInterface $entityManager,
+        private readonly TicketResponseMapper $ticketResponseMapper,
     ) {}
     /**
      * Esta ruta devuelve un listado de las incidencias
@@ -49,24 +51,7 @@ final class ApiTicketController extends AbstractController
          */
         $ticketPage = $this->ticketPaginator->getTicketPage($criteria, $filters->page);
 
-        /**
-         * Antes de enviar la respuesta al usuario, necesito convertir el objeto WindowPage
-         * al formato JSON.
-         */
-        // El método getItems() devuelve el listado de objetos Ticket
-        $tickets = $ticketPage->getItems();
-
-        /**
-         * Voy a mapear cada ticket de $tickets de objeto Ticket a JSON
-         * La función array_map() mapea todos los elementos de un array dado, aplicando
-         * para ello aplica un callback a cada uno de los elementos.
-         * El primer argumento es el callback que aplica el mapeo
-         * El segundo argumento es el array a mapear
-         */
-        $items = array_map(
-            fn(Ticket $ticket): array => $this->ticketToArray($ticket),
-            $tickets
-        );
+        $items = $this->ticketResponseMapper->mapCollection($ticketPage->getItems());
 
         return $this->json([
             'tickets' => $items
@@ -114,7 +99,7 @@ final class ApiTicketController extends AbstractController
          */
         return $this->json(
             [
-                'ticket' => $this->ticketToArray($ticket),
+                'ticket' => $this->ticketResponseMapper->map($ticket),
             ],
             Response::HTTP_CREATED,
             [
@@ -133,7 +118,7 @@ final class ApiTicketController extends AbstractController
     public function show(Ticket $ticket): JsonResponse
     {
         return $this->json([
-            'ticket' => $this->ticketToArray($ticket),
+            'ticket' => $this->ticketResponseMapper->map($ticket),
         ]);
     }
 
@@ -161,7 +146,7 @@ final class ApiTicketController extends AbstractController
         $this->entityManager->flush();
 
         return $this->json([
-            'ticket' => $this->ticketToArray($ticket),
+            'ticket' => $this->ticketResponseMapper->map($ticket),
         ]);
     }
 
@@ -174,13 +159,4 @@ final class ApiTicketController extends AbstractController
         return new Response(status: Response::HTTP_NO_CONTENT);
     }
 
-    private function ticketToArray(Ticket $ticket): array
-    {
-        return [
-            'code' => $ticket->getCode(),
-            'title' => $ticket->getTitle(),
-            'priority' => $ticket->getPriority()->value,
-            'status' => $ticket->getStatus()->value,
-        ];
-    }
 }
