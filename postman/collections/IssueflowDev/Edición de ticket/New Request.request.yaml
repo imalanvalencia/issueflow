@@ -1,4 +1,11 @@
 $kind: http-request
-url: ""
-method: GET
+url: http://localhost:8000/api/tickets/INC-1002
+method: PATCH
+body:
+  type: json
+  content: |-
+    {
+        "title": "Error grave en la factura",
+        "priority": "urgent"
+    }
 order: 1000

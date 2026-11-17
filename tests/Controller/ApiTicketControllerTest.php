@@ -41,6 +41,30 @@ final class ApiTicketControllerTest extends WebTestCase
         $this->entityManager->flush();
     }
 
+    public function test_it_shows_an_existing_ticket(): void
+    {
+        $this->client->request(Request::METHOD_GET, '/api/tickets/INC-0001');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([
+            'ticket' => [
+                'code' => 'INC-0001',
+                'title' => 'Título original',
+                'priority' => 'normal',
+                'status' => 'open',
+            ],
+        ], json_decode((string) $this->client->getResponse()->getContent(), true));
+    }
+
+    public function test_show_returns_the_expected_errors_for_invalid_and_missing_tickets(): void
+    {
+        $this->client->request(Request::METHOD_GET, '/api/tickets/wrong');
+        $this->assertErrorResponse(400, 'invalid_ticket_code', 'El código debe tener el formato INC-0000');
+
+        $this->client->request(Request::METHOD_GET, '/api/tickets/INC-9999');
+        $this->assertErrorResponse(404, 'ticket_not_found', 'La incidencia solicitada no existe');
+    }
+
     public function test_it_updates_the_title_and_persists_the_change(): void
     {
         $this->client->request(Request::METHOD_PATCH, '/api/tickets/INC-0001', [], [], ['CONTENT_TYPE' => 'application/json'], '{"title":"  Título nuevo  "}');
@@ -126,12 +150,10 @@ final class ApiTicketControllerTest extends WebTestCase
     public function test_invalid_code_and_missing_ticket_return_the_expected_errors(): void
     {
         $this->client->request(Request::METHOD_PATCH, '/api/tickets/wrong', [], [], ['CONTENT_TYPE' => 'application/json'], '{}');
-        self::assertResponseStatusCodeSame(400);
-        self::assertSame('invalid_ticket_code', json_decode((string) $this->client->getResponse()->getContent(), true)['error']['code']);
+        $this->assertErrorResponse(400, 'invalid_ticket_code', 'El código debe tener el formato INC-0000');
 
         $this->client->request(Request::METHOD_PATCH, '/api/tickets/INC-9999', [], [], ['CONTENT_TYPE' => 'application/json'], '{}');
-        self::assertResponseStatusCodeSame(404);
-        self::assertSame('ticket_not_found', json_decode((string) $this->client->getResponse()->getContent(), true)['error']['code']);
+        $this->assertErrorResponse(404, 'ticket_not_found', 'La incidencia solicitada no existe');
     }
 
     public function test_it_deletes_an_existing_ticket_without_a_response_body(): void
@@ -148,12 +170,10 @@ final class ApiTicketControllerTest extends WebTestCase
     public function test_delete_returns_400_for_an_invalid_code_and_404_for_a_missing_ticket(): void
     {
         $this->client->request(Request::METHOD_DELETE, '/api/tickets/wrong');
-        self::assertResponseStatusCodeSame(400);
-        self::assertSame('invalid_ticket_code', json_decode((string) $this->client->getResponse()->getContent(), true)['error']['code']);
+        $this->assertErrorResponse(400, 'invalid_ticket_code', 'El código debe tener el formato INC-0000');
 
         $this->client->request(Request::METHOD_DELETE, '/api/tickets/INC-9999');
-        self::assertResponseStatusCodeSame(404);
-        self::assertSame('ticket_not_found', json_decode((string) $this->client->getResponse()->getContent(), true)['error']['code']);
+        $this->assertErrorResponse(404, 'ticket_not_found', 'La incidencia solicitada no existe');
     }
 
     public function test_deleting_the_same_ticket_twice_returns_204_then_404(): void
@@ -264,5 +284,16 @@ final class ApiTicketControllerTest extends WebTestCase
             self::assertStringStartsWith('{', (string) $this->client->getResponse()->getContent());
             self::assertStringContainsString('Validation Failed', (string) $this->client->getResponse()->getContent());
         }
+    }
+
+    private function assertErrorResponse(int $statusCode, string $code, string $message): void
+    {
+        self::assertResponseStatusCodeSame($statusCode);
+        self::assertSame([
+            'error' => [
+                'code' => $code,
+                'message' => $message,
+            ],
+        ], json_decode((string) $this->client->getResponse()->getContent(), true));
     }
 }

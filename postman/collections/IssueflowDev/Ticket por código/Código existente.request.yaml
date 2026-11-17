@@ -1,4 +1,4 @@
 $kind: http-request
-url: http://localhost:8000/api/tickets/INC-1001
+url: http://localhost:8000/api/tickets/INC-1002
 method: GET
 order: 1000
