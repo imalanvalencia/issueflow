@@ -41,6 +41,53 @@ final class ApiTicketControllerTest extends WebTestCase
         $this->entityManager->flush();
     }
 
+    public function test_it_shows_an_existing_ticket(): void
+    {
+        $this->client->request(Request::METHOD_GET, '/api/tickets/INC-0001');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([
+            'ticket' => [
+                'code' => 'INC-0001',
+                'title' => 'Título original',
+                'priority' => 'normal',
+                'status' => 'open',
+            ],
+        ], json_decode((string) $this->client->getResponse()->getContent(), true));
+    }
+
+    public function test_it_creates_a_ticket_with_the_existing_json_contract(): void
+    {
+        $this->client->request(
+            Request::METHOD_POST,
+            '/api/tickets',
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            '{"code":"INC-2001","title":"Nueva incidencia","priority":"high","status":"open"}',
+        );
+
+        self::assertResponseStatusCodeSame(201);
+        self::assertSame('/api/tickets/INC-2001', $this->client->getResponse()->headers->get('Location'));
+        self::assertSame([
+            'ticket' => [
+                'code' => 'INC-2001',
+                'title' => 'Nueva incidencia',
+                'priority' => 'high',
+                'status' => 'open',
+            ],
+        ], json_decode((string) $this->client->getResponse()->getContent(), true));
+    }
+
+    public function test_show_returns_the_expected_errors_for_invalid_and_missing_tickets(): void
+    {
+        $this->client->request(Request::METHOD_GET, '/api/tickets/wrong');
+        $this->assertErrorResponse(400, 'invalid_ticket_code', 'El código debe tener el formato INC-0000');
+
+        $this->client->request(Request::METHOD_GET, '/api/tickets/INC-9999');
+        $this->assertErrorResponse(404, 'ticket_not_found', 'La incidencia solicitada no existe');
+    }
+
     public function test_it_updates_the_title_and_persists_the_change(): void
     {
         $this->client->request(Request::METHOD_PATCH, '/api/tickets/INC-0001', [], [], ['CONTENT_TYPE' => 'application/json'], '{"title":"  Título nuevo  "}');
@@ -126,12 +173,10 @@ final class ApiTicketControllerTest extends WebTestCase
     public function test_invalid_code_and_missing_ticket_return_the_expected_errors(): void
     {
         $this->client->request(Request::METHOD_PATCH, '/api/tickets/wrong', [], [], ['CONTENT_TYPE' => 'application/json'], '{}');
-        self::assertResponseStatusCodeSame(400);
-        self::assertSame('invalid_ticket_code', json_decode((string) $this->client->getResponse()->getContent(), true)['error']['code']);
+        $this->assertErrorResponse(400, 'invalid_ticket_code', 'El código debe tener el formato INC-0000');
 
         $this->client->request(Request::METHOD_PATCH, '/api/tickets/INC-9999', [], [], ['CONTENT_TYPE' => 'application/json'], '{}');
-        self::assertResponseStatusCodeSame(404);
-        self::assertSame('ticket_not_found', json_decode((string) $this->client->getResponse()->getContent(), true)['error']['code']);
+        $this->assertErrorResponse(404, 'ticket_not_found', 'La incidencia solicitada no existe');
     }
 
     public function test_it_deletes_an_existing_ticket_without_a_response_body(): void
@@ -148,12 +193,10 @@ final class ApiTicketControllerTest extends WebTestCase
     public function test_delete_returns_400_for_an_invalid_code_and_404_for_a_missing_ticket(): void
     {
         $this->client->request(Request::METHOD_DELETE, '/api/tickets/wrong');
-        self::assertResponseStatusCodeSame(400);
-        self::assertSame('invalid_ticket_code', json_decode((string) $this->client->getResponse()->getContent(), true)['error']['code']);
+        $this->assertErrorResponse(400, 'invalid_ticket_code', 'El código debe tener el formato INC-0000');
 
         $this->client->request(Request::METHOD_DELETE, '/api/tickets/INC-9999');
-        self::assertResponseStatusCodeSame(404);
-        self::assertSame('ticket_not_found', json_decode((string) $this->client->getResponse()->getContent(), true)['error']['code']);
+        $this->assertErrorResponse(404, 'ticket_not_found', 'La incidencia solicitada no existe');
     }
 
     public function test_deleting_the_same_ticket_twice_returns_204_then_404(): void
@@ -185,5 +228,95 @@ final class ApiTicketControllerTest extends WebTestCase
         $this->entityManager->clear();
         self::assertNotNull($this->entityManager->find(User::class, $assigneeId));
         self::assertNotNull($this->entityManager->find(Category::class, $categoryId));
+    }
+
+    public function test_ticket_list_maps_and_applies_query_filters(): void
+    {
+        foreach ([
+            ['INC-0002', 'Factura pendiente', TicketPriority::High, TicketStatus::Open],
+            ['INC-0003', 'Problema de acceso', TicketPriority::Urgent, TicketStatus::InProgress],
+            ['INC-0004', 'Factura cerrada', TicketPriority::High, TicketStatus::Closed],
+            ['INC-0005', 'Segundo asunto', TicketPriority::Normal, TicketStatus::Open],
+            ['INC-0006', 'Otro asunto', TicketPriority::Low, TicketStatus::InProgress],
+            ['INC-0007', 'Factura abierta', TicketPriority::High, TicketStatus::Open],
+        ] as [$code, $title, $priority, $status]) {
+            $this->entityManager->persist(new Ticket($code, $title, $priority, $status));
+        }
+        $this->entityManager->flush();
+
+        $this->client->request(Request::METHOD_GET, '/api/tickets');
+        self::assertResponseIsSuccessful();
+        $all = json_decode((string) $this->client->getResponse()->getContent(), true)['tickets'];
+        self::assertCount(3, $all);
+        self::assertSame(['code', 'title', 'priority', 'status'], array_keys($all[0]));
+
+        $this->client->request(Request::METHOD_GET, '/api/tickets?query=Factura&priority=high&status=open');
+        self::assertResponseIsSuccessful();
+        $filtered = json_decode((string) $this->client->getResponse()->getContent(), true)['tickets'];
+        self::assertSame(['INC-0007', 'INC-0002'], array_column($filtered, 'code'));
+
+        $this->client->request(Request::METHOD_GET, '/api/tickets?query=%20Factura%20&priority=%20high%20&status=%20open%20');
+        self::assertResponseIsSuccessful();
+        self::assertSame(['INC-0007', 'INC-0002'], array_column(json_decode((string) $this->client->getResponse()->getContent(), true)['tickets'], 'code'));
+
+        $this->client->request(Request::METHOD_GET, '/api/tickets?query=');
+        self::assertResponseIsSuccessful();
+        self::assertCount(3, json_decode((string) $this->client->getResponse()->getContent(), true)['tickets']);
+
+        $this->client->request(Request::METHOD_GET, '/api/tickets?priority=high');
+        self::assertResponseIsSuccessful();
+        self::assertSame(['INC-0007', 'INC-0004', 'INC-0002'], array_column(json_decode((string) $this->client->getResponse()->getContent(), true)['tickets'], 'code'));
+
+        $this->client->request(Request::METHOD_GET, '/api/tickets?status=closed');
+        self::assertResponseIsSuccessful();
+        self::assertSame(['INC-0004'], array_column(json_decode((string) $this->client->getResponse()->getContent(), true)['tickets'], 'code'));
+    }
+
+    public function test_ticket_list_preserves_page_fallback_and_bounds(): void
+    {
+        foreach (range(2, 7) as $number) {
+            $this->entityManager->persist(new Ticket(
+                sprintf('INC-%04d', $number),
+                'Ticket '.$number,
+                TicketPriority::Normal,
+                TicketStatus::Open,
+            ));
+        }
+        $this->entityManager->flush();
+
+        foreach (['not-a-number', '0'] as $page) {
+            $this->client->request(Request::METHOD_GET, '/api/tickets?page='.$page);
+            self::assertResponseIsSuccessful();
+            self::assertSame(['INC-0007', 'INC-0006', 'INC-0005'], array_column(json_decode((string) $this->client->getResponse()->getContent(), true)['tickets'], 'code'));
+        }
+
+        $this->client->request(Request::METHOD_GET, '/api/tickets?page=2');
+        self::assertResponseIsSuccessful();
+        self::assertSame(['INC-0004', 'INC-0003', 'INC-0002'], array_column(json_decode((string) $this->client->getResponse()->getContent(), true)['tickets'], 'code'));
+
+        $this->client->request(Request::METHOD_GET, '/api/tickets?page=99');
+        self::assertResponseIsSuccessful();
+        self::assertSame(['INC-0001'], array_column(json_decode((string) $this->client->getResponse()->getContent(), true)['tickets'], 'code'));
+    }
+
+    public function test_invalid_ticket_list_filters_return_bad_request(): void
+    {
+        foreach (['/api/tickets?priority=invalid', '/api/tickets?status=invalid'] as $uri) {
+            $this->client->request(Request::METHOD_GET, $uri);
+            self::assertResponseStatusCodeSame(400);
+            self::assertStringStartsWith('{', (string) $this->client->getResponse()->getContent());
+            self::assertStringContainsString('Validation Failed', (string) $this->client->getResponse()->getContent());
+        }
+    }
+
+    private function assertErrorResponse(int $statusCode, string $code, string $message): void
+    {
+        self::assertResponseStatusCodeSame($statusCode);
+        self::assertSame([
+            'error' => [
+                'code' => $code,
+                'message' => $message,
+            ],
+        ], json_decode((string) $this->client->getResponse()->getContent(), true));
     }
 }

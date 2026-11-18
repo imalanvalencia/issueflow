@@ -5,8 +5,8 @@ body:
   type: json
   content: |-
     {
-        "code": "INC-1022",
-        "title": "No puedo descargar una factura",
+        "code": "INC-1010",
+        "title": "Otra vez esta incidencia",
         "priority": "high",
         "status": "open"
     }
